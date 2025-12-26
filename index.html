@@ -4,331 +4,337 @@
     <meta charset="UTF-8">
     <title>Scribble Game</title>
     <style>
-        body { font-family: 'Segoe UI', sans-serif; background: #f0f2f5; margin: 0; display: flex; height: 100vh; overflow: hidden; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #eef2f5; margin: 0; height: 100vh; display: flex; overflow: hidden; }
         
-        /* LOGIN SCREEN */
-        #login-screen {
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: #fff; z-index: 100; display: flex;
-            align-items: center; justify-content: center; flex-direction: column;
-        }
-        .login-box { padding: 40px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); border-radius: 8px; text-align: center; background: white; width: 300px; }
-        input { width: 100%; padding: 10px; margin: 10px 0; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box; }
-        button { width: 100%; padding: 10px; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; }
-        button:hover { background: #0056b3; }
+        /* LOGIN OVERLAY */
+        #login-overlay { position: fixed; top:0; left:0; width:100%; height:100%; background:white; z-index:999; display:flex; align-items:center; justify-content:center; }
+        .login-card { background:white; padding:40px; border-radius:12px; box-shadow:0 8px 24px rgba(0,0,0,0.15); text-align:center; width:320px; border: 1px solid #ddd; }
+        .login-card h1 { margin-top:0; color:#333; }
+        .input-group { margin: 15px 0; }
+        input { width:100%; padding:12px; border:1px solid #ccc; border-radius:6px; box-sizing:border-box; font-size:16px; }
+        button.primary { background:#007bff; color:white; border:none; padding:12px; width:100%; border-radius:6px; cursor:pointer; font-size:16px; font-weight:bold; transition: background 0.2s; }
+        button.primary:hover { background:#0056b3; }
 
-        /* MAIN GAME LAYOUT */
-        .container { display: none; width: 100%; height: 100%; }
+        /* MAIN APP */
+        #app-container { display:none; width:100%; height:100%; }
         
-        .left-panel { width: 250px; background: white; border-right: 1px solid #ddd; padding: 15px; display: flex; flex-direction: column; }
-        .right-panel { flex: 1; display: flex; flex-direction: column; background: #e9ecef; position: relative; }
-
+        /* LEFT SIDEBAR */
+        .sidebar { width:260px; background:white; border-right:1px solid #ddd; display:flex; flex-direction:column; padding:15px; box-sizing:border-box; }
+        .header-row { display:flex; justify-content:space-between; align-items:center; margin-bottom:15px; }
+        h3 { margin:0; font-size:16px; color:#555; text-transform:uppercase; letter-spacing:1px; }
+        
         /* SCOREBOARD */
-        .scoreboard { flex: 1; overflow-y: auto; margin-bottom: 15px; }
-        .score-item { display: flex; justify-content: space-between; padding: 5px 0; border-bottom: 1px solid #eee; }
+        #scoreboard { flex:1; overflow-y:auto; margin-bottom:15px; border-top:1px solid #eee; }
+        .player-row { display:flex; justify-content:space-between; padding:8px 0; border-bottom:1px solid #eee; font-size:14px; }
+        .player-row.drawing { background:#f0f8ff; font-weight:bold; color:#007bff; }
         
         /* CHAT */
-        .chat-container { height: 200px; border: 1px solid #ddd; border-radius: 4px; overflow-y: auto; background: #fafafa; padding: 5px; font-size: 14px; margin-bottom: 5px;}
-        .chat-msg { margin-bottom: 4px; }
-        .sys-msg { color: #666; font-style: italic; }
-        .correct-msg { color: green; font-weight: bold; }
-
-        /* CANVAS AREA */
-        .top-bar { background: white; padding: 10px 20px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #ddd; }
-        .timer-box { font-size: 18px; font-weight: bold; color: #333; }
-        .word-display { font-size: 20px; letter-spacing: 2px; font-weight: bold; color: #007bff; }
-
-        .canvas-wrapper { flex: 1; display: flex; align-items: center; justify-content: center; padding: 20px; }
-        canvas { background: white; box-shadow: 0 2px 10px rgba(0,0,0,0.1); cursor: crosshair; }
-
-        .toolbar { padding: 10px; background: white; display: flex; gap: 10px; justify-content: center; border-top: 1px solid #ddd; }
-        .color-btn { width: 30px; height: 30px; border-radius: 50%; border: 2px solid transparent; cursor: pointer; }
-        .color-btn.active { border-color: #333; transform: scale(1.1); }
+        #chat-box { height:250px; border:1px solid #ddd; border-radius:6px; overflow-y:auto; background:#fafafa; padding:8px; font-size:13px; margin-bottom:8px; display:flex; flex-direction:column; }
+        .msg { margin-bottom:4px; word-wrap:break-word; }
+        .msg strong { color:#333; }
+        .sys-msg { color:#666; font-style:italic; font-size:12px; text-align:center; margin: 5px 0; }
+        .guess-msg { color:#28a745; font-weight:bold; }
         
+        /* GAME AREA */
+        .game-area { flex:1; display:flex; flex-direction:column; background:#e9ecef; position:relative; }
+        
+        /* TOP BAR */
+        .top-bar { background:white; padding:10px 20px; display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #ddd; height:50px; }
+        .timer-badge { background:#333; color:white; padding:5px 10px; border-radius:4px; font-weight:bold; font-family:monospace; font-size:16px; }
+        .word-display { font-size:24px; font-weight:900; letter-spacing:3px; color:#007bff; }
+        
+        /* CANVAS */
+        .canvas-container { flex:1; display:flex; align-items:center; justify-content:center; padding:20px; position:relative; }
+        canvas { background:white; box-shadow:0 4px 12px rgba(0,0,0,0.1); cursor:crosshair; border-radius:4px; }
+        #waiting-overlay { position:absolute; top:50%; left:50%; transform:translate(-50%, -50%); font-size:24px; color:#aaa; font-weight:bold; pointer-events:none; }
+
+        /* TOOLBAR */
+        .toolbar { background:white; padding:10px; display:flex; gap:10px; align-items:center; justify-content:center; border-top:1px solid #ddd; display:none; }
+        .tool-btn { border:1px solid #ccc; background:white; cursor:pointer; font-size:14px; padding:5px 15px; border-radius:4px; color:#333; }
+        .tool-btn:hover { background:#f0f0f0; }
+        .tool-btn.active { background:#007bff; color:white; border-color:#007bff; }
+        
+        .color-swatch { width:28px; height:28px; border-radius:50%; border:2px solid transparent; cursor:pointer; }
+        .color-swatch:hover { transform:scale(1.1); }
+        .color-swatch.active { border-color:#333; }
+        input[type="range"] { width:100px; }
+
         /* RESULTS MODAL */
-        #results-modal {
-            display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.8); z-index: 200; align-items: center; justify-content: center;
-        }
-        .results-content { background: white; padding: 30px; border-radius: 8px; text-align: center; min-width: 300px; }
+        #results-modal { display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.85); z-index:2000; align-items:center; justify-content:center; }
+        .results-box { background:white; padding:40px; border-radius:12px; text-align:center; min-width:350px; }
+        .winner-name { color:#28a745; font-size:28px; font-weight:bold; margin:10px 0; }
+        .leaderboard-list { text-align:left; margin:20px 0; max-height:200px; overflow-y:auto; }
+
+        .btn-danger { background:#dc3545; color:white; border:none; padding:5px 10px; border-radius:4px; cursor:pointer; font-size:12px; }
+        .btn-secondary { background:#6c757d; color:white; border:none; padding:8px 15px; border-radius:4px; cursor:pointer; font-size:14px; }
     </style>
 </head>
 <body>
 
-    <div id="login-screen">
-        <div class="login-box">
-            <h1>Scribble Game</h1>
-            <input type="text" id="username" placeholder="Enter Username">
-            <input type="text" id="roomId" placeholder="Enter Room ID (e.g. 101)">
-            <button onclick="joinGame()">Join Game</button>
+<div id="login-overlay">
+    <div class="login-card">
+        <h1>Scribble Game</h1>
+        <div class="input-group">
+            <input type="text" id="username" placeholder="Enter Nickname" maxlength="15">
         </div>
+        <div class="input-group">
+            <input type="text" id="roomId" placeholder="Room ID (e.g. room1)" value="room1">
+        </div>
+        <button class="primary" onclick="joinGame()">PLAY!</button>
+    </div>
+</div>
+
+<div id="app-container">
+    <div class="sidebar">
+        <div class="header-row">
+            <h3>Room: <span id="room-display"></span></h3>
+            <button class="btn-danger" onclick="leaveGame()">Exit</button>
+        </div>
+        
+        <h3>Leaderboard</h3>
+        <div id="scoreboard"></div>
+        
+        <h3>Chat</h3>
+        <div id="chat-box"></div>
+        <input type="text" id="chat-input" placeholder="Type here..." onkeypress="handleChat(event)">
     </div>
 
-    <div class="container" id="game-app">
-        <div class="left-panel">
-            <h3>Players</h3>
-            <div class="scoreboard" id="scoreboard"></div>
+    <div class="game-area">
+        <div class="top-bar">
+            <div>
+                <span class="timer-badge" id="round-timer">00:00</span>
+                <span style="font-size:12px; color:#666; margin-left:10px;">Session: <span id="session-timer">00:00</span></span>
+            </div>
+            <div class="word-display" id="word-display">WAITING...</div>
+            <button class="btn-secondary" onclick="exportCanvas()">💾 Save Art</button>
+        </div>
+
+        <div class="canvas-container" id="canvas-wrapper">
+            <canvas id="canvas"></canvas>
+            <div id="waiting-overlay">Waiting for players...</div>
+        </div>
+
+        <div class="toolbar" id="toolbar">
+            <div class="color-swatch" style="background:black" onclick="setColor('black')"></div>
+            <div class="color-swatch" style="background:#dc3545" onclick="setColor('#dc3545')"></div>
+            <div class="color-swatch" style="background:#007bff" onclick="setColor('#007bff')"></div>
+            <div class="color-swatch" style="background:#28a745" onclick="setColor('#28a745')"></div>
+            <div class="color-swatch" style="background:#fd7e14" onclick="setColor('#fd7e14')"></div>
+            <div class="color-swatch" style="background:#6f42c1" onclick="setColor('#6f42c1')"></div>
             
-            <h3>Chat</h3>
-            <div class="chat-container" id="chat-box"></div>
-            <input type="text" id="chat-input" placeholder="Type guess..." onkeypress="handleChat(event)">
-        </div>
-
-        <div class="right-panel">
-            <div class="top-bar">
-                <div class="timer-box">
-                    Time: <span id="time-display">00:00</span> | 
-                    Session: <span id="session-display">10:00</span>
-                </div>
-                <div class="word-display" id="word-display">WAITING...</div>
+            <div style="width:1px; height:30px; background:#ddd; margin:0 10px;"></div>
+            
+            <button class="tool-btn" onclick="setTool('pen')">Pen</button>
+            <button class="tool-btn" onclick="setTool('eraser')">Eraser</button>
+            <button class="tool-btn" onclick="clearBoard()">Clear</button>
+            
+            <div style="display:flex; align-items:center; margin-left:10px;">
+                <span style="font-size:12px; margin-right:5px; color:#333;">Size:</span>
+                <input type="range" min="2" max="50" value="5" onchange="setSize(this.value)">
             </div>
-
-            <div class="canvas-wrapper" id="canvas-container">
-                <canvas id="canvas"></canvas>
-            </div>
-
-            <div class="toolbar" id="toolbar">
-                <div class="color-btn" style="background:black" onclick="setTool('pen', 'black')"></div>
-                <div class="color-btn" style="background:red" onclick="setTool('pen', 'red')"></div>
-                <div class="color-btn" style="background:blue" onclick="setTool('pen', 'blue')"></div>
-                <div class="color-btn" style="background:green" onclick="setTool('pen', 'green')"></div>
-                <button onclick="setTool('eraser', 'white')">Eraser</button>
-                <button onclick="clearBoard()">Clear</button>
-            </div>
-        </div>
-    </div>
-
-    <div id="results-modal">
-        <div class="results-content">
-            <h2 id="winner-text">Winner: </h2>
-            <div id="final-scores"></div>
-            <br>
-            <button onclick="closeResults()">Close</button>
         </div>
     </div>
+</div>
 
-    <script>
-        // CONFIG
-        const WS_URL = "ws://localhost:7070/game";
+<div id="results-modal">
+    <div class="results-box">
+        <h2>Session Over</h2>
+        <div class="winner-name" id="winner-name"></div>
+        <div class="leaderboard-list" id="final-leaderboard"></div>
+        <button class="primary" onclick="closeResults()">Close</button>
+    </div>
+</div>
+
+<script>
+    // --- STATE ---
+    const WS_URL = "ws://" + location.host + "/game";
+    let socket;
+    let username, roomId;
+    let isDrawer = false;
+    let tool = "pen";
+    let color = "black";
+    let size = 5;
+    let isDrawing = false;
+    let lastX=0, lastY=0;
+
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d');
+
+    // --- SETUP ---
+    window.addEventListener('resize', resizeCanvas);
+    function resizeCanvas() {
+        const wrapper = document.getElementById('canvas-wrapper');
+        canvas.width = wrapper.clientWidth - 40;
+        canvas.height = wrapper.clientHeight - 40;
+    }
+
+    function joinGame() {
+        username = document.getElementById('username').value.trim();
+        roomId = document.getElementById('roomId').value.trim();
+        if (!username || !roomId) return alert("Name and Room ID required!");
+
+        socket = new WebSocket(WS_URL);
         
-        let socket;
-        let username;
-        let roomId;
-        let isDrawer = false;
-        let tool = "pen";
-        let color = "black";
-        let isDrawing = false;
-        let lastX = 0, lastY = 0;
-
-        const canvas = document.getElementById('canvas');
-        const ctx = canvas.getContext('2d');
+        socket.onopen = () => {
+            document.getElementById('login-overlay').style.display = 'none';
+            document.getElementById('app-container').style.display = 'flex';
+            document.getElementById('room-display').innerText = roomId;
+            resizeCanvas();
+            send({ type: "joinRoom", username, roomId });
+        };
         
-        // Resize Canvas
-        function resizeCanvas() {
-            const container = document.getElementById('canvas-container');
-            canvas.width = container.clientWidth - 40;
-            canvas.height = container.clientHeight - 40;
-        }
-        window.addEventListener('resize', resizeCanvas);
+        socket.onmessage = (e) => handleMessage(JSON.parse(e.data));
+        socket.onclose = () => { alert("Disconnected!"); location.reload(); };
+    }
 
-        function joinGame() {
-            username = document.getElementById('username').value.trim();
-            roomId = document.getElementById('roomId').value.trim();
-            if (!username || !roomId) return alert("Please fill all fields");
+    function send(data) {
+        if(socket && socket.readyState === WebSocket.OPEN) socket.send(JSON.stringify({ ...data, roomId }));
+    }
 
-            socket = new WebSocket(WS_URL);
+    // --- GAME LOGIC ---
+    function handleMessage(msg) {
+        const { type, payload } = msg;
 
-            socket.onopen = () => {
-                document.getElementById('login-screen').style.display = 'none';
-                document.getElementById('game-app').style.display = 'flex';
-                resizeCanvas();
-                
-                send({ type: "joinRoom", username, roomId });
-            };
-
-            socket.onmessage = (e) => {
-                const msg = JSON.parse(e.data);
-                handleServerMessage(msg);
-            };
-
-            socket.onclose = () => alert("Disconnected from server");
-        }
-
-        function send(data) {
-            if (socket && socket.readyState === WebSocket.OPEN) {
-                socket.send(JSON.stringify({ ...data, roomId }));
-            }
-        }
-
-        function handleServerMessage(msg) {
-            const { type, payload } = msg;
-
-            if (type === "chatMessage") addChat(payload.from, payload.text);
-            if (type === "userList") renderScoreboard(payload); // payload is list of users initially
-            if (type === "scoreUpdate") updateScores(payload.scores);
-            
-            if (type === "gameState") {
-                document.getElementById('time-display').innerText = formatTime(payload.timeRemaining);
-                document.getElementById('session-display').innerText = formatTime(payload.sessionTimeRemaining);
-                
-                isDrawer = (payload.currentDrawer === username);
-                document.getElementById('toolbar').style.display = isDrawer ? "flex" : "none";
-                
-                if (!isDrawer && payload.hasWord) {
-                    document.getElementById('word-display').innerText = `GUESSING (${payload.currentDrawer} is drawing)`;
-                } else if (!payload.hasWord) {
-                    document.getElementById('word-display').innerText = "WAITING FOR PLAYERS";
-                }
-            }
-
-            if (type === "yourWord") {
-                document.getElementById('word-display').innerText = `DRAW: ${payload.word}`;
-                alert(`You are drawing! Word: ${payload.word}`);
-            }
-
-            if (type === "remoteStroke") drawStroke(payload);
-            if (type === "clearBoard") ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-            if (type === "sessionEnded") showResults(payload);
-            
-            if (type === "countdown") {
-                 document.getElementById('word-display').innerText = `STARTING IN ${payload.seconds}...`;
-            }
-        }
-
-        // --- DRAWING ---
-        canvas.addEventListener('mousedown', startDraw);
-        canvas.addEventListener('mousemove', moveDraw);
-        canvas.addEventListener('mouseup', endDraw);
-        canvas.addEventListener('mouseout', endDraw);
-
-        function getPos(e) {
-            const rect = canvas.getBoundingClientRect();
-            return { x: e.clientX - rect.left, y: e.clientY - rect.top };
-        }
-
-        function startDraw(e) {
-            if (!isDrawer) return;
-            isDrawing = true;
-            const pos = getPos(e);
-            lastX = pos.x; lastY = pos.y;
-        }
-
-        function moveDraw(e) {
-            if (!isDrawing || !isDrawer) return;
-            const pos = getPos(e);
-            
-            const strokeData = {
-                from: {x: lastX, y: lastY},
-                to: {x: pos.x, y: pos.y},
-                color: tool === 'eraser' ? 'white' : color,
-                size: tool === 'eraser' ? 20 : 5,
-                tool
-            };
-
-            drawStroke(strokeData); // Draw locally
-            send({ type: "stroke", payload: strokeData }); // Send to server
-
-            lastX = pos.x; lastY = pos.y;
-        }
-
-        function endDraw() { isDrawing = false; }
-
-        function drawStroke(data) {
-            ctx.beginPath();
-            ctx.moveTo(data.from.x, data.from.y);
-            ctx.lineTo(data.to.x, data.to.y);
-            ctx.strokeStyle = data.color;
-            ctx.lineWidth = data.size;
-            ctx.lineCap = "round";
-            ctx.stroke();
-        }
-
-        function clearBoard() {
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-            send({ type: "clear", payload: {} });
-        }
-
-        function setTool(t, c) {
-            tool = t;
-            color = c;
-        }
-
-        // --- UI HELPERS ---
-        function addChat(from, text) {
-            const div = document.createElement("div");
-            div.className = "chat-msg";
-            if (from === "System") div.classList.add("sys-msg");
-            div.innerHTML = `<strong>${from}:</strong> ${text}`;
-            const box = document.getElementById("chat-box");
-            box.appendChild(div);
-            box.scrollTop = box.scrollHeight;
-        }
-
-        function handleChat(e) {
-            if (e.key === "Enter") {
-                const val = e.target.value.trim();
-                if (val) {
-                    send({ type: "guess", payload: { text: val } });
-                    e.target.value = "";
-                }
-            }
-        }
-
-        function updateScores(scores) {
-            const board = document.getElementById("scoreboard");
-            board.innerHTML = "";
-            Object.entries(scores)
-                .sort((a,b) => b[1] - a[1])
-                .forEach(([u, s]) => {
-                    const div = document.createElement("div");
-                    div.className = "score-item";
-                    div.innerHTML = `<span>${u}</span><strong>${s}</strong>`;
-                    board.appendChild(div);
-                });
-        }
+        if (type === "chatMessage") addChat(payload.from, payload.text);
+        if (type === "userList") updateScoreboard(payload, {}); // Initial list
+        if (type === "scoreUpdate") updateScoreboard(null, payload.scores);
         
-        // Initial user list render (without scores)
-        function renderScoreboard(users) {
-            // Only update if scores are empty, otherwise updateScores handles it
-            if (document.getElementById("scoreboard").children.length === 0) {
-                 const board = document.getElementById("scoreboard");
-                 board.innerHTML = "";
-                 users.forEach(u => {
-                    const div = document.createElement("div");
-                    div.className = "score-item";
-                    div.innerHTML = `<span>${u}</span><strong>0</strong>`;
-                    board.appendChild(div);
-                 });
+        if (type === "gameState") {
+            document.getElementById('round-timer').innerText = formatTime(payload.timeRemaining);
+            document.getElementById('session-timer').innerText = formatTime(payload.sessionTimeRemaining);
+            
+            isDrawer = (payload.currentDrawer === username);
+            document.getElementById('toolbar').style.display = isDrawer ? "flex" : "none";
+            
+            const overlay = document.getElementById('waiting-overlay');
+            const wordBox = document.getElementById('word-display');
+
+            if (!payload.gameActive) {
+                overlay.style.display = "block";
+                wordBox.innerText = "WAITING";
+            } else {
+                overlay.style.display = "none";
+                if (!isDrawer) wordBox.innerText = payload.hasWord ? "GUESS THE WORD!" : "PREPARING...";
             }
         }
 
-        function showResults(data) {
-            document.getElementById('results-modal').style.display = "flex";
-            document.getElementById('winner-text').innerText = "Winner: " + data.winner;
-            
-            const list = document.getElementById('final-scores');
+        if (type === "yourWord") {
+            document.getElementById('word-display').innerText = `DRAW: ${payload.word}`;
+            alert("You are drawing: " + payload.word);
+        }
+
+        if (type === "remoteStroke") drawLine(payload, false);
+        if (type === "clearBoard") ctx.clearRect(0,0, canvas.width, canvas.height);
+        
+        if (type === "countdown") {
+            document.getElementById('waiting-overlay').innerText = `Starting in ${payload.seconds}s...`;
+        }
+
+        if (type === "sessionEnded") {
+            document.getElementById('results-modal').style.display = 'flex';
+            document.getElementById('winner-name').innerText = payload.winner;
+            const list = document.getElementById('final-leaderboard');
             list.innerHTML = "";
-            data.leaderboard.forEach(entry => {
-                // Java sends Map.Entry, which serializes to {key: "name", value: 10}
-                // Check if your Jackson version uses key/value or the object map
-                // In this simplified JS, we handle generic object
-                const name = entry.key || Object.keys(entry)[0]; 
-                const score = entry.value || entry[name];
-                
-                list.innerHTML += `<div>${entry.key || Object.keys(entry)[0]}: ${entry.value} pts</div>`;
+            payload.leaderboard.forEach(p => {
+                const key = p.key || Object.keys(p)[0];
+                const val = p.value || p[key];
+                list.innerHTML += `<div style="padding:5px; border-bottom:1px solid #eee; display:flex; justify-content:space-between;"><span>${key}</span><b>${val}</b></div>`;
             });
         }
+    }
 
-        function closeResults() {
-            document.getElementById('results-modal').style.display = "none";
-        }
+    // --- CANVAS INPUT ---
+    canvas.addEventListener('mousedown', start);
+    canvas.addEventListener('mousemove', move);
+    canvas.addEventListener('mouseup', end);
+    canvas.addEventListener('mouseout', end);
 
-        function formatTime(s) {
-            const m = Math.floor(s / 60);
-            const sec = s % 60;
-            return `${m}:${sec < 10 ? '0'+sec : sec}`;
+    function getPos(e) {
+        const rect = canvas.getBoundingClientRect();
+        return { x: e.clientX - rect.left, y: e.clientY - rect.top };
+    }
+
+    function start(e) {
+        if(!isDrawer) return;
+        isDrawing=true;
+        const p = getPos(e);
+        lastX = p.x; lastY = p.y;
+    }
+
+    function move(e) {
+        if(!isDrawing || !isDrawer) return;
+        const p = getPos(e);
+        const stroke = { from:{x:lastX, y:lastY}, to:{x:p.x, y:p.y}, color: tool==='eraser'?'white':color, size: tool==='eraser'?size*2:size };
+        
+        drawLine(stroke, true); // Local draw
+        send({ type: "stroke", payload: stroke });
+        lastX = p.x; lastY = p.y;
+    }
+
+    function end() { isDrawing=false; }
+
+    function drawLine(s, isLocal) {
+        ctx.beginPath();
+        ctx.moveTo(s.from.x, s.from.y);
+        ctx.lineTo(s.to.x, s.to.y);
+        ctx.strokeStyle = s.color;
+        ctx.lineWidth = s.size;
+        ctx.lineCap = "round";
+        ctx.stroke();
+    }
+
+    // --- CONTROLS ---
+    function setTool(t) { tool = t; }
+    function setColor(c) { color = c; tool = "pen"; }
+    function setSize(s) { size = s; }
+    function clearBoard() { ctx.clearRect(0,0,canvas.width,canvas.height); send({type:"clear", payload:{}}); }
+    function leaveGame() { if(confirm("Leave game?")) location.reload(); }
+    
+    function exportCanvas() {
+        const link = document.createElement('a');
+        link.download = 'scribble-art.png';
+        link.href = canvas.toDataURL();
+        link.click();
+    }
+
+    function closeResults() { document.getElementById('results-modal').style.display = 'none'; }
+
+    // --- UI UPDATES ---
+    function addChat(from, text) {
+        const box = document.getElementById('chat-box');
+        const div = document.createElement('div');
+        div.className = from === "System" ? "msg sys-msg" : "msg";
+        if(text.includes("guessed correctly")) div.classList.add("guess-msg");
+        div.innerHTML = from === "System" ? text : `<strong>${from}:</strong> ${text}`;
+        box.appendChild(div);
+        box.scrollTop = box.scrollHeight;
+    }
+
+    function handleChat(e) {
+        if(e.key === "Enter") {
+            const val = e.target.value.trim();
+            if(val) { send({type:"guess", payload:{text:val}}); e.target.value=""; }
         }
-    </script>
+    }
+
+    let currentUsers = [];
+    function updateScoreboard(userList, scores) {
+        const board = document.getElementById('scoreboard');
+        if(userList) currentUsers = userList;
+        
+        board.innerHTML = "";
+        // Sort by score
+        currentUsers.forEach(u => {
+            const score = (scores && scores[u]) ? scores[u] : 0;
+            board.innerHTML += `<div class="player-row"><span>${u}</span><b>${score}</b></div>`;
+        });
+    }
+
+    function formatTime(s) {
+        const m = Math.floor(s/60);
+        const sec = s%60;
+        return `${m}:${sec<10?'0'+sec:sec}`;
+    }
+</script>
 </body>
 </html>
