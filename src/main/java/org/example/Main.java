@@ -284,9 +284,7 @@ public class Main {
                 if ("stroke".equals(msg.type)) {
                     // Only current drawer can draw
                     if (ctx.sessionId().equals(room.currentDrawerId)) {
-                        ctx.session.getRemote().sendStringByFuture(new ObjectMapper().writeValueAsString(
-                            new Message("remoteStroke", rId, "System", msg.payload)
-                        ));
+                        ctx.send(new Message("remoteStroke", rId, "System", msg.payload));
                         // Forward to others (exclude self)
                         for (WsContext client : userRoomMap.keySet()) {
                             if (userRoomMap.get(client).equals(rId) && !client.sessionId().equals(ctx.sessionId())) {
