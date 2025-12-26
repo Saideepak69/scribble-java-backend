@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Scribble Game</title>
+    <style>
+        body { font-family: 'Segoe UI', sans-serif; background: #f0f2f5; margin: 0; display: flex; height: 100vh; overflow: hidden; }
+        
+        /* LOGIN SCREEN */
+        #login-screen {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: #fff; z-index: 100; display: flex;
+            align-items: center; justify-content: center; flex-direction: column;
+        }
+        .login-box { padding: 40px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); border-radius: 8px; text-align: center; background: white; width: 300px; }
+        input { width: 100%; padding: 10px; margin: 10px 0; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box; }
+        button { width: 100%; padding: 10px; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; }
+        button:hover { background: #0056b3; }
+
+        /* MAIN GAME LAYOUT */
+        .container { display: none; width: 100%; height: 100%; }
+        
+        .left-panel { width: 250px; background: white; border-right: 1px solid #ddd; padding: 15px; display: flex; flex-direction: column; }
+        .right-panel { flex: 1; display: flex; flex-direction: column; background: #e9ecef; position: relative; }
+
+        /* SCOREBOARD */
+        .scoreboard { flex: 1; overflow-y: auto; margin-bottom: 15px; }
+        .score-item { display: flex; justify-content: space-between; padding: 5px 0; border-bottom: 1px solid #eee; }
+        
+        /* CHAT */
+        .chat-container { height: 200px; border: 1px solid #ddd; border-radius: 4px; overflow-y: auto; background: #fafafa; padding: 5px; font-size: 14px; margin-bottom: 5px;}
+        .chat-msg { margin-bottom: 4px; }
+        .sys-msg { color: #666; font-style: italic; }
+        .correct-msg { color: green; font-weight: bold; }
+
+        /* CANVAS AREA */
+        .top-bar { background: white; padding: 10px 20px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #ddd; }
+        .timer-box { font-size: 18px; font-weight: bold; color: #333; }
+        .word-display { font-size: 20px; letter-spacing: 2px; font-weight: bold; color: #007bff; }
+
+        .canvas-wrapper { flex: 1; display: flex; align-items: center; justify-content: center; padding: 20px; }
+        canvas { background: white; box-shadow: 0 2px 10px rgba(0,0,0,0.1); cursor: crosshair; }
+
+        .toolbar { padding: 10px; background: white; display: flex; gap: 10px; justify-content: center; border-top: 1px solid #ddd; }
+        .color-btn { width: 30px; height: 30px; border-radius: 50%; border: 2px solid transparent; cursor: pointer; }
+        .color-btn.active { border-color: #333; transform: scale(1.1); }
+        
+        /* RESULTS MODAL */
+        #results-modal {
+            display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.8); z-index: 200; align-items: center; justify-content: center;
+        }
+        .results-content { background: white; padding: 30px; border-radius: 8px; text-align: center; min-width: 300px; }
+    </style>
+</head>
+<body>
+
+    <div id="login-screen">
+        <div class="login-box">
+            <h1>Scribble Game</h1>
+            <input type="text" id="username" placeholder="Enter Username">
+            <input type="text" id="roomId" placeholder="Enter Room ID (e.g. 101)">
+            <button onclick="joinGame()">Join Game</button>
+        </div>
+    </div>
+
+    <div class="container" id="game-app">
+        <div class="left-panel">
+            <h3>Players</h3>
+            <div class="scoreboard" id="scoreboard"></div>
+            
+            <h3>Chat</h3>
+            <div class="chat-container" id="chat-box"></div>
+            <input type="text" id="chat-input" placeholder="Type guess..." onkeypress="handleChat(event)">
+        </div>
+
+        <div class="right-panel">
+            <div class="top-bar">
+                <div class="timer-box">
+                    Time: <span id="time-display">00:00</span> | 
+                    Session: <span id="session-display">10:00</span>
+                </div>
+                <div class="word-display" id="word-display">WAITING...</div>
+            </div>
+
+            <div class="canvas-wrapper" id="canvas-container">
+                <canvas id="canvas"></canvas>
+            </div>
+
+            <div class="toolbar" id="toolbar">
+                <div class="color-btn" style="background:black" onclick="setTool('pen', 'black')"></div>
+                <div class="color-btn" style="background:red" onclick="setTool('pen', 'red')"></div>
+                <div class="color-btn" style="background:blue" onclick="setTool('pen', 'blue')"></div>
+                <div class="color-btn" style="background:green" onclick="setTool('pen', 'green')"></div>
+                <button onclick="setTool('eraser', 'white')">Eraser</button>
+                <button onclick="clearBoard()">Clear</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="results-modal">
+        <div class="results-content">
+            <h2 id="winner-text">Winner: </h2>
+            <div id="final-scores"></div>
+            <br>
+            <button onclick="closeResults()">Close</button>
+        </div>
+    </div>
+
+    <script>
+        // CONFIG
+        const WS_URL = "ws://localhost:7070/game";
+        
+        let socket;
+        let username;
+        let roomId;
+        let isDrawer = false;
+        let tool = "pen";
+        let color = "black";
+        let isDrawing = false;
+        let lastX = 0, lastY = 0;
+
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        
+        // Resize Canvas
+        function resizeCanvas() {
+            const container = document.getElementById('canvas-container');
+            canvas.width = container.clientWidth - 40;
+            canvas.height = container.clientHeight - 40;
+        }
+        window.addEventListener('resize', resizeCanvas);
+
+        function joinGame() {
+            username = document.getElementById('username').value.trim();
+            roomId = document.getElementById('roomId').value.trim();
+            if (!username || !roomId) return alert("Please fill all fields");
+
+            socket = new WebSocket(WS_URL);
+
+            socket.onopen = () => {
+                document.getElementById('login-screen').style.display = 'none';
+                document.getElementById('game-app').style.display = 'flex';
+                resizeCanvas();
+                
+                send({ type: "joinRoom", username, roomId });
+            };
+
+            socket.onmessage = (e) => {
+                const msg = JSON.parse(e.data);
+                handleServerMessage(msg);
+            };
+
+            socket.onclose = () => alert("Disconnected from server");
+        }
+
+        function send(data) {
+            if (socket && socket.readyState === WebSocket.OPEN) {
+                socket.send(JSON.stringify({ ...data, roomId }));
+            }
+        }
+
+        function handleServerMessage(msg) {
+            const { type, payload } = msg;
+
+            if (type === "chatMessage") addChat(payload.from, payload.text);
+            if (type === "userList") renderScoreboard(payload); // payload is list of users initially
+            if (type === "scoreUpdate") updateScores(payload.scores);
+            
+            if (type === "gameState") {
+                document.getElementById('time-display').innerText = formatTime(payload.timeRemaining);
+                document.getElementById('session-display').innerText = formatTime(payload.sessionTimeRemaining);
+                
+                isDrawer = (payload.currentDrawer === username);
+                document.getElementById('toolbar').style.display = isDrawer ? "flex" : "none";
+                
+                if (!isDrawer && payload.hasWord) {
+                    document.getElementById('word-display').innerText = `GUESSING (${payload.currentDrawer} is drawing)`;
+                } else if (!payload.hasWord) {
+                    document.getElementById('word-display').innerText = "WAITING FOR PLAYERS";
+                }
+            }
+
+            if (type === "yourWord") {
+                document.getElementById('word-display').innerText = `DRAW: ${payload.word}`;
+                alert(`You are drawing! Word: ${payload.word}`);
+            }
+
+            if (type === "remoteStroke") drawStroke(payload);
+            if (type === "clearBoard") ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            if (type === "sessionEnded") showResults(payload);
+            
+            if (type === "countdown") {
+                 document.getElementById('word-display').innerText = `STARTING IN ${payload.seconds}...`;
+            }
+        }
+
+        // --- DRAWING ---
+        canvas.addEventListener('mousedown', startDraw);
+        canvas.addEventListener('mousemove', moveDraw);
+        canvas.addEventListener('mouseup', endDraw);
+        canvas.addEventListener('mouseout', endDraw);
+
+        function getPos(e) {
+            const rect = canvas.getBoundingClientRect();
+            return { x: e.clientX - rect.left, y: e.clientY - rect.top };
+        }
+
+        function startDraw(e) {
+            if (!isDrawer) return;
+            isDrawing = true;
+            const pos = getPos(e);
+            lastX = pos.x; lastY = pos.y;
+        }
+
+        function moveDraw(e) {
+            if (!isDrawing || !isDrawer) return;
+            const pos = getPos(e);
+            
+            const strokeData = {
+                from: {x: lastX, y: lastY},
+                to: {x: pos.x, y: pos.y},
+                color: tool === 'eraser' ? 'white' : color,
+                size: tool === 'eraser' ? 20 : 5,
+                tool
+            };
+
+            drawStroke(strokeData); // Draw locally
+            send({ type: "stroke", payload: strokeData }); // Send to server
+
+            lastX = pos.x; lastY = pos.y;
+        }
+
+        function endDraw() { isDrawing = false; }
+
+        function drawStroke(data) {
+            ctx.beginPath();
+            ctx.moveTo(data.from.x, data.from.y);
+            ctx.lineTo(data.to.x, data.to.y);
+            ctx.strokeStyle = data.color;
+            ctx.lineWidth = data.size;
+            ctx.lineCap = "round";
+            ctx.stroke();
+        }
+
+        function clearBoard() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            send({ type: "clear", payload: {} });
+        }
+
+        function setTool(t, c) {
+            tool = t;
+            color = c;
+        }
+
+        // --- UI HELPERS ---
+        function addChat(from, text) {
+            const div = document.createElement("div");
+            div.className = "chat-msg";
+            if (from === "System") div.classList.add("sys-msg");
+            div.innerHTML = `<strong>${from}:</strong> ${text}`;
+            const box = document.getElementById("chat-box");
+            box.appendChild(div);
+            box.scrollTop = box.scrollHeight;
+        }
+
+        function handleChat(e) {
+            if (e.key === "Enter") {
+                const val = e.target.value.trim();
+                if (val) {
+                    send({ type: "guess", payload: { text: val } });
+                    e.target.value = "";
+                }
+            }
+        }
+
+        function updateScores(scores) {
+            const board = document.getElementById("scoreboard");
+            board.innerHTML = "";
+            Object.entries(scores)
+                .sort((a,b) => b[1] - a[1])
+                .forEach(([u, s]) => {
+                    const div = document.createElement("div");
+                    div.className = "score-item";
+                    div.innerHTML = `<span>${u}</span><strong>${s}</strong>`;
+                    board.appendChild(div);
+                });
+        }
+        
+        // Initial user list render (without scores)
+        function renderScoreboard(users) {
+            // Only update if scores are empty, otherwise updateScores handles it
+            if (document.getElementById("scoreboard").children.length === 0) {
+                 const board = document.getElementById("scoreboard");
+                 board.innerHTML = "";
+                 users.forEach(u => {
+                    const div = document.createElement("div");
+                    div.className = "score-item";
+                    div.innerHTML = `<span>${u}</span><strong>0</strong>`;
+                    board.appendChild(div);
+                 });
+            }
+        }
+
+        function showResults(data) {
+            document.getElementById('results-modal').style.display = "flex";
+            document.getElementById('winner-text').innerText = "Winner: " + data.winner;
+            
+            const list = document.getElementById('final-scores');
+            list.innerHTML = "";
+            data.leaderboard.forEach(entry => {
+                // Java sends Map.Entry, which serializes to {key: "name", value: 10}
+                // Check if your Jackson version uses key/value or the object map
+                // In this simplified JS, we handle generic object
+                const name = entry.key || Object.keys(entry)[0]; 
+                const score = entry.value || entry[name];
+                
+                list.innerHTML += `<div>${entry.key || Object.keys(entry)[0]}: ${entry.value} pts</div>`;
+            });
+        }
+
+        function closeResults() {
+            document.getElementById('results-modal').style.display = "none";
+        }
+
+        function formatTime(s) {
+            const m = Math.floor(s / 60);
+            const sec = s % 60;
+            return `${m}:${sec < 10 ? '0'+sec : sec}`;
+        }
+    </script>
+</body>
+</html>
