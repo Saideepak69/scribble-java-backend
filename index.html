@@ -449,6 +449,14 @@
             canvas.height = wrapper.clientHeight - 40;
         }
 
+        // Auto-fill inputs
+        window.addEventListener('load', () => {
+            const savedName = localStorage.getItem('scribble_username');
+            const savedRoom = localStorage.getItem('scribble_roomId');
+            if (savedName) document.getElementById('username').value = savedName;
+            if (savedRoom) document.getElementById('roomId').value = savedRoom;
+        });
+
         function joinGame() {
             username = document.getElementById('username').value.trim();
             roomId = document.getElementById('roomId').value.trim();
@@ -461,6 +469,11 @@
                 document.getElementById('app-container').style.display = 'flex';
                 document.getElementById('room-display').innerText = roomId;
                 resizeCanvas();
+
+                // Save to localStorage
+                localStorage.setItem('scribble_username', username);
+                localStorage.setItem('scribble_roomId', roomId);
+
                 send({ type: "joinRoom", username, roomId });
             };
 

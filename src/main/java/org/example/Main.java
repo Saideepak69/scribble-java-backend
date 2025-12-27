@@ -41,6 +41,7 @@ class GameRoom {
     private ScheduledFuture<?> currentTask;
     private ScheduledFuture<?> sessionTask;
     private ScheduledFuture<?> countdownTask;
+    private ScheduledFuture<?> gameLoopTask;
 
     private final List<String> WORD_LIST = Arrays.asList(
             "apple", "banana", "cat", "dog", "car", "house", "tree", "sun", "moon", "star",
@@ -81,6 +82,11 @@ class GameRoom {
 
         startNewRound();
         sessionTask = scheduler.schedule(this::endSession, SESSION_DURATION, TimeUnit.MILLISECONDS);
+
+        // Broadcast game state every second so timers update
+        if (gameLoopTask != null)
+            gameLoopTask.cancel(false);
+        gameLoopTask = scheduler.scheduleAtFixedRate(this::sendGameState, 0, 1, TimeUnit.SECONDS);
     }
 
     private void startNewRound() {
@@ -148,6 +154,8 @@ class GameRoom {
             sessionTask.cancel(false);
         if (countdownTask != null)
             countdownTask.cancel(false);
+        if (gameLoopTask != null)
+            gameLoopTask.cancel(false);
 
         // Calculate Leaderboard
         List<Map.Entry<String, Integer>> leaderboard = new ArrayList<>(scores.entrySet());
@@ -227,8 +235,13 @@ public class Main {
 
     public static void main(String[] args) {
         int port = Integer.parseInt(System.getenv().getOrDefault("PORT", "7070"));
-        Javalin app = Javalin.create(config -> config.router.mount(router -> {
-        })).start(port);
+        Javalin app = Javalin.create(config -> {
+            config.router.mount(router -> {
+            });
+            config.jetty.modifyWebSocketServletFactory(ws -> {
+                ws.setIdleTimeout(java.time.Duration.ofHours(1));
+            });
+        }).start(port);
 
         // 1. SERVE FRONTEND
         app.get("/", ctx -> ctx.contentType("text/html").result(new FileInputStream("index.html")));
