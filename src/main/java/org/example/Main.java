@@ -50,7 +50,7 @@ class GameRoom {
 
     // CONFIGURATION
     private final long ROUND_DURATION = 120000; // 2 mins
-    private final long SESSION_DURATION = 600000; // 10 mins
+    private final long SESSION_DURATION = 420000; // 7 mins
     private final long COUNTDOWN_DURATION = 20000; // 20 secs
 
     public GameRoom(String roomId) {
@@ -78,7 +78,7 @@ class GameRoom {
     private void startSession() {
         gameActive = true;
         sessionStartTime = System.currentTimeMillis();
-        broadcast("chatMessage", Map.of("from", "System", "text", "Session Started! 10 minutes to play."));
+        broadcast("chatMessage", Map.of("from", "System", "text", "Session Started! 7 minutes to play."));
 
         startNewRound();
         sessionTask = scheduler.schedule(this::endSession, SESSION_DURATION, TimeUnit.MILLISECONDS);
