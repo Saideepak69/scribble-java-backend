@@ -265,6 +265,10 @@ public class Main {
                     room.users.put(ctx.sessionId(), finalName);
                     room.scores.putIfAbsent(finalName, 0);
 
+                    // Notify the specific user of their final name (in case of rename)
+                    ctx.send(mapper.writeValueAsString(
+                            new Message("joinSuccess", rId, "System", Map.of("username", finalName))));
+
                     room.broadcast("userList", room.users.values());
                     room.broadcast("scoreUpdate", Map.of("scores", room.scores));
                     room.broadcast("chatMessage", Map.of("from", "System", "text", finalName + " joined."));
@@ -275,6 +279,9 @@ public class Main {
                 GameRoom room = rooms.get(rId);
                 if (room == null)
                     return;
+
+                if ("ping".equals(msg.type))
+                    return; // Heartbeat
 
                 if ("stroke".equals(msg.type)) {
                     if (ctx.sessionId().equals(room.currentDrawerId)) {
