@@ -294,7 +294,7 @@ public class Main {
                     return;
 
                 if ("ping".equals(msg.type))
-                    return; // Heartbeat
+                    return; // Heartbeat (Server keeps connection alive automatically by receiving)
 
                 if ("stroke".equals(msg.type)) {
                     if (ctx.sessionId().equals(room.currentDrawerId)) {

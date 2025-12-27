@@ -477,10 +477,11 @@
                 send({ type: "joinRoom", username, roomId });
             };
 
-            // Heartbeat to prevent idle timeout
+            // Heartbeat to prevent idle timeout (faster interval for stability)
             setInterval(() => {
                 if (socket.readyState === WebSocket.OPEN) socket.send(JSON.stringify({ type: "ping", roomId }));
-            }, 30000); // Every 30s
+            }, 5000); // Every 5s
+
 
 
             socket.onmessage = (e) => handleMessage(JSON.parse(e.data));
