@@ -238,7 +238,8 @@
             align-items: center;
             justify-content: center;
             border-top: 1px solid #ddd;
-            display: none;
+            display: flex;
+            /* Force visible */
         }
 
         .tool-btn {
@@ -345,10 +346,10 @@
         <div class="login-card">
             <h1>Scribble Game</h1>
             <div class="input-group">
-                <input type="text" id="username" placeholder="Enter Nickname" maxlength="15">
+                <input type="text" id="username" placeholder="Enter Nickname" maxlength="15" autocomplete="off">
             </div>
             <div class="input-group">
-                <input type="text" id="roomId" placeholder="Room ID (e.g. room1)" value="room1">
+                <input type="text" id="roomId" placeholder="Room ID (e.g. room1)" autocomplete="off">
             </div>
             <button class="primary" onclick="joinGame()">PLAY!</button>
         </div>
@@ -449,13 +450,7 @@
             canvas.height = wrapper.clientHeight - 40;
         }
 
-        // Auto-fill inputs
-        window.addEventListener('load', () => {
-            const savedName = localStorage.getItem('scribble_username');
-            const savedRoom = localStorage.getItem('scribble_roomId');
-            if (savedName) document.getElementById('username').value = savedName;
-            if (savedRoom) document.getElementById('roomId').value = savedRoom;
-        });
+        // Auto-fill inputs removed based on user feedback
 
         function joinGame() {
             username = document.getElementById('username').value.trim();
@@ -470,25 +465,34 @@
                 document.getElementById('room-display').innerText = roomId;
                 resizeCanvas();
 
-                // Save to localStorage
-                localStorage.setItem('scribble_username', username);
-                localStorage.setItem('scribble_roomId', roomId);
-
                 send({ type: "joinRoom", username, roomId });
             };
 
-            // Heartbeat to prevent idle timeout (faster interval for stability)
-            setInterval(() => {
+            // Heartbeat using Web Worker (prevents throttling when tab is inactive)
+            const heartbeatWorker = new Worker(URL.createObjectURL(new Blob([`
+                self.onmessage = function() {
+                    setInterval(function() { self.postMessage('ping'); }, 5000);
+                };
+            `], { type: "text/javascript" })));
+
+            heartbeatWorker.onmessage = function () {
                 if (socket.readyState === WebSocket.OPEN) socket.send(JSON.stringify({ type: "ping", roomId }));
-            }, 5000); // Every 5s
+            };
+            heartbeatWorker.postMessage('start');
 
 
 
             socket.onmessage = (e) => handleMessage(JSON.parse(e.data));
             socket.onclose = () => {
-                // Do NOT reload automatically, just show error
-                document.getElementById('waiting-overlay').style.color = 'red';
-                alert("Disconnected from server. Check internet or server status.");
+                // Auto-reconnect attempts
+                document.getElementById('waiting-overlay').innerText = "Connection lost. Reconnecting...";
+                document.getElementById('waiting-overlay').style.color = 'orange';
+                document.getElementById('waiting-overlay').style.display = 'block';
+
+                setTimeout(() => {
+                    console.log("Attempting to reconnect...");
+                    joinGame();
+                }, 3000);
             };
         }
 
@@ -514,7 +518,9 @@
                 document.getElementById('session-timer').innerText = formatTime(payload.sessionTimeRemaining);
 
                 isDrawer = (payload.currentDrawer === username);
-                document.getElementById('toolbar').style.display = isDrawer ? "flex" : "none";
+                // ALWAYS SHOW TOOLBAR FOR VERIFICATION
+                document.getElementById('toolbar').style.display = "flex";
+                // document.getElementById('toolbar').style.display = isDrawer ? "flex" : "none";
 
                 const overlay = document.getElementById('waiting-overlay');
                 const wordBox = document.getElementById('word-display');
